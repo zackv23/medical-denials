@@ -46,3 +46,10 @@ This is a working scaffold, **not** a HIPAA-compliant production system yet:
 - Have a healthcare attorney review `HIPAA_FORM_TEXT` in `src/lib.ts` (it is a template) and the bonus terms.
 - Add login rate limiting (Cloudflare WAF/Turnstile), email verification, password reset, MFA, and a data-retention policy (HIPAA records are generally kept 6 years; account deletion here hard-deletes everything).
 - EHR/billing "quick connect" stores encrypted credentials and exposes an ingest endpoint; vendor-specific connectors (Epic FHIR, athenahealth, Waystar, …) are not built yet.
+
+## CI/CD (GitHub Actions → Cloudflare)
+`.github/workflows/deploy.yml` runs on every push to `main` (or manually): typecheck, apply D1 migrations, `wrangler deploy`.
+One-time setup:
+1. Create the D1 database and R2 bucket (see Deploy) and put the real `database_id` in `wrangler.jsonc`.
+2. `npx wrangler secret put ENCRYPTION_KEY`
+3. In GitHub → Settings → Secrets and variables → Actions, add `CLOUDFLARE_API_TOKEN` (template "Edit Cloudflare Workers" + D1 Edit + R2 Edit) and `CLOUDFLARE_ACCOUNT_ID`.
