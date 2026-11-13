@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HIPAA release form — DenialOps</title><link rel="stylesheet" href="/styles.css"></head><body>
+<header class="top"><div class="wrap" id="nav"></div></header>
+<main class="wrap" style="max-width:760px;padding-top:24px;padding-bottom:40px">
+<h1>HIPAA release form</h1>
+<p>Required before we can accept any claim data. Signing is recorded with your IP, time and form version.</p>
+<div id="signed" class="msg ok" hidden></div>
+<div class="formtext" id="text" tabindex="0" aria-label="Form text"></div>
+<form class="stack card" id="f" style="margin-top:16px">
+<label>Covered entity (practice legal name)<input name="entity_name" required></label>
+<div class="row"><label style="flex:1">Signer full name<input name="signer_name" required></label><label style="flex:1">Title<input name="signer_title" required></label></div>
+<label>Practice NPI (optional)<input name="npi" inputmode="numeric" maxlength="10"></label>
+<label>Type your full name as your electronic signature<input name="signature" required></label>
+<label style="display:flex;gap:10px;align-items:flex-start;font-weight:400"><input type="checkbox" name="agree" style="width:auto;margin-top:5px" required> I am authorized to sign for this practice and agree to the release and business associate terms above.</label>
+<div class="msg err" id="m" hidden role="alert"></div>
+<button class="btn">Sign and submit</button></form></main>
+<script src="/app.js"></script><script>
+(async()=>{const u=await me();nav(u.user,"/hipaa.html");
+const h=await api("/api/hipaa");text.textContent=h.text;f.entity_name.value=h.entity_name;
+if(h.signed){signed.hidden=false;signed.textContent=`Signed by ${h.signed.signer_name} (${h.signed.signer_title}) on ${h.signed.signed_at} UTC — version ${h.signed.form_version}.`}
+f.onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(f));d.agree=f.agree.checked;
+ try{await api("/api/hipaa",{method:"POST",body:d});location.href="/dashboard.html"}catch(x){show(m,x.message)}}})();
+</script></body></html>

@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Integrations &amp; AI — DenialOps</title><link rel="stylesheet" href="/styles.css"></head><body>
+<header class="top"><div class="wrap" id="nav"></div></header>
+<main class="wrap" style="max-width:900px;padding-top:24px;padding-bottom:40px">
+<h1>EZ Quick Connect</h1>
+<p>Connect your EHR/EMR, practice management or third-party billing software. We create a secure link (valid 7 days) you can send to your system admin or biller, plus integration credentials for pushing remittances automatically.</p>
+<form class="stack card" id="cf"><div class="row"><label style="flex:1">System<select name="system_name" id="sys"></select></label><label style="flex:1">Type<select name="category" id="cat"></select></label></div>
+<label>Contact email (admin/biller, optional)<input name="contact_email" type="email"></label><div class="msg err" id="m" hidden role="alert"></div><button class="btn">Create quick-connect link</button></form>
+<div id="created" class="card" hidden style="margin-top:16px"></div>
+<h2 style="margin-top:28px">Your connections</h2><div class="card tbl"><table><thead><tr><th>System</th><th>Type</th><th>Status</th><th>Link expires</th><th></th></tr></thead><tbody id="cons"></tbody></table></div>
+<h2 id="mcp" style="margin-top:36px">Connect an AI assistant (MCP)</h2>
+<p>Create a token, then add DenialOps as a remote MCP server (Streamable HTTP) in Claude or any MCP client. The token grants access to your practice's claims — treat it like a password.</p>
+<div class="card"><div class="row"><input id="tname" placeholder="Name, e.g. Claude" style="max-width:260px"><button class="btn" id="mk">Create token</button></div>
+<div id="tokout" hidden style="margin-top:12px"></div><div class="tbl"><table><thead><tr><th>Name</th><th>Prefix</th><th>Last used</th><th></th></tr></thead><tbody id="toks"></tbody></table></div></div>
+</main><script src="/app.js"></script><script>
+(async()=>{const u=await me();nav(u.user,"/integrations.html");
+const o=await api("/api/connection-options");sys.innerHTML=o.systems.map(s=>`<option>${esc(s)}</option>`).join("");cat.innerHTML=o.categories.map(s=>`<option>${esc(s)}</option>`).join("");
+function panel(r){created.hidden=false;created.innerHTML=`<h3>Send this link to your system admin or biller</h3><pre>${esc(r.connect_url)}</pre>
+<h3>Integration credentials (shown once)</h3><p>For systems that can push data automatically:</p><pre>POST ${esc(r.ingest_url)}\nX-Ingest-Key: ${esc(r.ingest_key)}\nBody: raw X12 835 text, or JSON {"claims":[{"claim_id","carc","denied"}]}</pre>`}
+async function lc(){const r=await api("/api/connections");cons.innerHTML=r.connections.map(c=>`<tr><td>${esc(c.system_name)}</td><td>${esc(c.category)}</td><td><span class="pill">${esc(c.status)}</span></td><td>${esc(c.link_expires_at||"")}</td><td><button class="btn ghost sm" data-r="${esc(c.id)}">New link</button> <button class="btn ghost sm" data-d="${esc(c.id)}">Remove</button></td></tr>`).join("")}
+cf.onsubmit=async e=>{e.preventDefault();try{panel(await api("/api/connections",{method:"POST",body:Object.fromEntries(new FormData(cf))}));lc()}catch(x){show(m,x.message)}};
+cons.onclick=async e=>{if(e.target.dataset.r){panel(await api(`/api/connections/${e.target.dataset.r}/link`,{method:"POST"}));lc()}
+ if(e.target.dataset.d&&confirm("Remove this connection? Its link and ingest key stop working.")){await api("/api/connections/"+e.target.dataset.d,{method:"DELETE"});lc()}};
+async function lt(){const r=await api("/api/tokens");toks.innerHTML=r.tokens.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(t.token_prefix)}…</td><td>${esc(t.last_used_at||"never")}</td><td><button class="btn ghost sm" data-t="${esc(t.id)}">Revoke</button></td></tr>`).join("")}
+mk.onclick=async()=>{const r=await api("/api/tokens",{method:"POST",body:{name:tname.value}});tokout.hidden=false;
+ tokout.innerHTML=`<p><strong>Copy now — shown once.</strong></p><pre>${esc(r.token)}</pre><p>Claude Code:</p><pre>claude mcp add --transport http denialops ${esc(r.mcp_url)} --header "Authorization: Bearer ${esc(r.token)}"</pre>`;lt()};
+toks.onclick=async e=>{if(e.target.dataset.t){await api("/api/tokens/"+e.target.dataset.t,{method:"DELETE"});lt()}};
+lc();lt()})();
+</script></body></html>

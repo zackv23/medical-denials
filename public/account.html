@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Account — DenialOps</title><link rel="stylesheet" href="/styles.css"></head><body>
+<header class="top"><div class="wrap" id="nav"></div></header>
+<main class="wrap" style="max-width:640px;padding-top:24px;padding-bottom:40px"><h1>Account</h1>
+<div class="card"><p><strong id="nm"></strong><br><span id="em"></span><br><span id="pr"></span></p>
+<div class="row"><button class="btn" id="lo">Log out</button><a class="btn ghost" href="/signup.html">Create a new account</a></div></div>
+<div class="card" style="margin-top:20px;border-color:var(--bad)"><h2>Delete account</h2>
+<p><strong>This cannot be undone.</strong> It permanently deletes your practice, claims, uploaded files, signed HIPAA form, integrations and tokens.</p>
+<form class="stack" id="df"><label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+<label>Type DELETE to confirm<input name="confirm" autocomplete="off" required></label><div class="msg err" id="m" hidden role="alert"></div><button class="btn danger">Permanently delete my account</button></form></div>
+</main><script src="/app.js"></script><script>
+(async()=>{const u=await me();nav(u.user,"/account.html");nm.textContent=u.user.name;em.textContent=u.user.email;pr.textContent=u.practice.name;
+lo.onclick=async()=>{await api("/api/auth/logout",{method:"POST"});location.href="/"};
+df.onsubmit=async e=>{e.preventDefault();if(!confirm("Delete your account and ALL data permanently?"))return;
+ try{await api("/api/account",{method:"DELETE",body:Object.fromEntries(new FormData(df))});location.href="/?deleted=1"}catch(x){show(m,x.message)}}})();
+</script></body></html>

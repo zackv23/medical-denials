@@ -1,0 +1,34 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — DenialOps</title><link rel="stylesheet" href="/styles.css"></head><body>
+<header class="top"><div class="wrap" id="nav"></div></header>
+<main class="wrap" style="padding-top:24px;padding-bottom:40px">
+<h1 id="h">Onboarding &amp; claims</h1>
+<div class="bonus" id="bonus"></div>
+<div class="grid" style="margin-bottom:20px"><div class="card"><h3>Onboarding checklist</h3><ol class="steps" id="steps"></ol></div>
+<div><div class="kpis" id="kpis"></div></div></div>
+<div class="card"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Claims</h3>
+<label style="display:flex;gap:8px;align-items:center">Status <select id="flt" style="width:auto"><option value="">All</option></select></label></div>
+<div class="tbl"><table><thead><tr><th>Claim</th><th>Payer ICN</th><th>CARC</th><th>Category</th><th>Denied</th><th>Status</th><th>Next step</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+<p id="empty" hidden>No claims yet. <a href="/upload.html">Upload your first denials</a>.</p></div>
+<dialog id="dlg" style="max-width:640px;width:92%"><pre id="letter"></pre><button class="btn sm" onclick="dlg.close()">Close</button></dialog>
+</main>
+<script src="/app.js"></script><script>
+const ST=["new","in_review","appealed","resubmitted","paid","written_off"];
+(async()=>{const u=await me();nav(u.user,"/dashboard.html");
+ h.textContent=u.practice.name+" — onboarding & claims";
+ flt.innerHTML+=ST.map(s=>`<option>${s}</option>`).join("");
+ async function load(){const s=await api("/api/summary");
+  bonus.textContent=`🎉 Year-end sign-up bonus reserved for your practice: ${money(s.bonus_cents)} (${u.practice.doctor_count} doctor${u.practice.doctor_count>1?"s":""}). Offer ends ${s.bonus_deadline}.`;
+  steps.innerHTML=s.steps.map(x=>`<li class="${x.done?"done":""}"><span class="dot">${x.done?"✓":""}</span>${x.href&&!x.done?`<a href="${esc(x.href)}">${esc(x.label)}</a>`:esc(x.label)}</li>`).join("");
+  const n=s.by_status.reduce((a,r)=>a+r.n,0);
+  kpis.innerHTML=[["Claims denied",n],["Dollars at risk",money(s.total_denied_cents)],["Recovered",money(s.recovered_cents)]].map(([l,v])=>`<div class="card kpi"><div class="n">${v}</div><div class="l">${l}</div></div>`).join("");
+  const c=await api("/api/claims"+(flt.value?"?status="+flt.value:""));
+  empty.hidden=c.claims.length>0;
+  rows.innerHTML=c.claims.map(r=>`<tr><td>${esc(r.claim_id)}</td><td>${esc(r.payer_icn)}</td><td>${esc(r.carc)}</td><td>${esc(r.category)}</td><td>${money(r.denied_cents)}</td>
+   <td><select data-id="${esc(r.id)}" aria-label="Status for ${esc(r.claim_id)}">${ST.map(s=>`<option ${s==r.status?"selected":""}>${s}</option>`).join("")}</select></td>
+   <td>${esc(r.recommended_action)}</td><td><button class="btn ghost sm" data-appeal="${esc(r.id)}">Draft appeal</button></td></tr>`).join("");}
+ flt.onchange=load;
+ rows.onchange=async e=>{if(e.target.dataset.id){await api("/api/claims/"+e.target.dataset.id,{method:"PATCH",body:{status:e.target.value}});load()}};
+ rows.onclick=async e=>{const id=e.target.dataset.appeal;if(id){letter.textContent=(await api(`/api/claims/${id}/appeal`)).letter;dlg.showModal()}};
+ load();})();
+</script></body></html>

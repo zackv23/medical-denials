@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Create account — DenialOps</title><link rel="stylesheet" href="/styles.css"></head><body>
+<header class="top"><div class="wrap" id="nav"></div></header>
+<main class="wrap"><div class="card auth"><h1>Create your account</h1>
+<p id="tier" class="bonus">Your year-end bonus: <span id="amt">$1,000</span></p>
+<form class="stack" id="f">
+<label>Your name<input name="name" autocomplete="name" required></label>
+<label>Practice name<input name="practice_name" autocomplete="organization" required></label>
+<label>Number of doctors<input name="doctor_count" type="number" min="1" max="1000" value="1" required></label>
+<label>Work email<input name="email" type="email" autocomplete="email" required></label>
+<label>Password (12+ characters)<input name="password" type="password" minlength="12" autocomplete="new-password" required></label>
+<div class="msg err" id="m" hidden role="alert"></div>
+<button class="btn">Create account</button></form>
+<p>Already have an account? <a href="/login.html">Log in</a></p></div></main>
+<script src="/app.js"></script><script>
+nav(null,"");
+const f=document.getElementById("f"),amt=document.getElementById("amt");
+const bonus=n=>n>=3?"$5,000":n==2?"$2,500":"$1,000";
+f.doctor_count.oninput=()=>amt.textContent=bonus(+f.doctor_count.value);
+f.onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(f));
+ try{await api("/api/auth/signup",{method:"POST",body:d});location.href="/hipaa.html"}catch(x){show(document.getElementById("m"),x.message)}};
+</script></body></html>

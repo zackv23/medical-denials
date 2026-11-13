@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Log in — DenialOps</title><link rel="stylesheet" href="/styles.css"></head><body>
+<header class="top"><div class="wrap" id="nav"></div></header>
+<main class="wrap"><div class="card auth"><h1>Log in</h1>
+<form class="stack" id="f">
+<label>Email<input name="email" type="email" autocomplete="email" required></label>
+<label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+<div class="msg err" id="m" hidden role="alert"></div>
+<button class="btn">Log in</button></form>
+<p>New here? <a href="/signup.html">Create a new account</a></p></div></main>
+<script src="/app.js"></script><script>
+nav(null,"/login.html");
+f.onsubmit=async e=>{e.preventDefault();try{await api("/api/auth/login",{method:"POST",body:Object.fromEntries(new FormData(f))});location.href="/dashboard.html"}catch(x){show(m,x.message)}};
+</script></body></html>

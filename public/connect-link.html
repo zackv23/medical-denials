@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quick connect — DenialOps</title><link rel="stylesheet" href="/styles.css"><meta name="robots" content="noindex"></head><body>
+<header class="top"><div class="wrap"><a class="logo" href="/">Denial<b>Ops</b></a></div></header>
+<main class="wrap"><div class="card auth" style="max-width:560px"><h1>Quick connect</h1><div class="msg err" id="bad" hidden></div>
+<div id="ok" hidden><p><strong id="who"></strong> asked you to connect <strong id="sysn"></strong> to DenialOps. Provide credentials for a <em>read-only</em> integration user where possible.</p>
+<form class="stack" id="f"><label>Connection method<select name="method" id="method"><option value="">Choose…</option><option>SFTP / file drop</option><option>API client credentials</option><option>Username &amp; password (portal)</option><option>I'll push files via the ingest API</option></select></label>
+<label>Host / URL<input name="host"></label><div class="row"><label style="flex:1">Username<input name="username" autocomplete="off"></label><label style="flex:1">Password<input name="password" type="password" autocomplete="off"></label></div>
+<div class="row"><label style="flex:1">Client ID<input name="client_id" autocomplete="off"></label><label style="flex:1">Client secret<input name="client_secret" type="password" autocomplete="off"></label></div>
+<label>Notes<textarea name="notes" rows="2"></textarea></label><div class="msg err" id="m" hidden role="alert"></div><button class="btn">Send securely</button></form></div>
+<div id="done" class="msg ok" hidden>Thank you — credentials were encrypted and sent. You can close this page.</div></div></main>
+<script src="/app.js"></script><script>
+const t=location.pathname.split("/").pop();
+api("/api/connect/"+t).then(r=>{ok.hidden=false;who.textContent=r.practice;sysn.textContent=r.system_name+" ("+r.category+")"}).catch(e=>{bad.hidden=false;bad.textContent=e.message});
+f.onsubmit=async e=>{e.preventDefault();try{await api("/api/connect/"+t,{method:"POST",body:Object.fromEntries(new FormData(f))});ok.hidden=true;done.hidden=false}catch(x){show(m,x.message)}};
+</script></body></html>
