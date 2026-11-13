@@ -1,14 +1,14 @@
 import { Hono, type Context } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import {
-  type Env, BONUS_DEADLINE, CLAIM_STATUSES, FORM_VERSION, HIPAA_FORM_TEXT, bonusForDoctors,
+  type Env, BONUS_DEADLINE, CLAIM_STATUSES, FORM_VERSION, HIPAA_FORM_TEXT, SPECIALTIES, SPECIALTY_LABELS, bonusForDoctors,
   PREAUTH_CARCS, decryptJson, encryptJson, feesAndCredit, hashPassword, randomHex, safeEqual, sha256Hex, uid,
 } from "./lib";
 import { carcInfo, draftAppeal, looksLike835, parse835, parseCsv, type Denial } from "./eras";
 import { importDenials } from "./claims";
 import { handleMcp } from "./mcp";
 
-type Vars = { user: { id: string; email: string; name: string; practice_id: string }; practice: { id: string; name: string; doctor_count: number; bonus_cents: number } };
+type Vars = { user: { id: string; email: string; name: string; practice_id: string }; practice: { id: string; name: string; doctor_count: number; bonus_cents: number; specialty: string } };
 type C = Context<{ Bindings: Env; Variables: Vars }>;
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -45,12 +45,12 @@ const requireAuth = async (c: C, next: () => Promise<void>) => {
   const token = getCookie(c, "session");
   if (!token) return c.json({ error: "unauthenticated" }, 401);
   const row = await c.env.DB.prepare(
-    `SELECT u.id, u.email, u.name, u.practice_id, p.name pname, p.doctor_count, p.bonus_cents
+    `SELECT u.id, u.email, u.name, u.practice_id, p.name pname, p.doctor_count, p.bonus_cents, p.specialty
      FROM sessions s JOIN users u ON u.id=s.user_id JOIN practices p ON p.id=u.practice_id
      WHERE s.token_hash=? AND s.expires_at > ?`).bind(await sha256Hex(token), new Date().toISOString()).first<any>();
   if (!row) return c.json({ error: "unauthenticated" }, 401);
   c.set("user", { id: row.id, email: row.email, name: row.name, practice_id: row.practice_id });
-  c.set("practice", { id: row.practice_id, name: row.pname, doctor_count: row.doctor_count, bonus_cents: row.bonus_cents });
+  c.set("practice", { id: row.practice_id, name: row.pname, doctor_count: row.doctor_count, bonus_cents: row.bonus_cents, specialty: row.specialty ?? "other" });
   await next();
 };
 
@@ -63,6 +63,7 @@ app.post("/api/auth/signup", async (c: C) => {
   const name = String(b.name ?? "").trim();
   const practiceName = String(b.practice_name ?? "").trim();
   const doctors = Math.floor(Number(b.doctor_count));
+  const specialty = (SPECIALTIES as readonly string[]).includes(String(b.specialty ?? "")) ? String(b.specialty) : "other";
   const pw = String(b.password ?? "");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return c.json({ error: "Enter a valid email." }, 400);
   if (!name || !practiceName) return c.json({ error: "Your name and practice name are required." }, 400);
@@ -71,7 +72,7 @@ app.post("/api/auth/signup", async (c: C) => {
   if (await c.env.DB.prepare("SELECT 1 x FROM users WHERE email=?").bind(email).first()) return c.json({ error: "An account with that email already exists." }, 409);
   const practiceId = uid(), userId = uid(), { hash, salt } = await hashPassword(pw);
   await c.env.DB.batch([
-    c.env.DB.prepare("INSERT INTO practices (id,name,doctor_count,bonus_cents) VALUES (?,?,?,?)").bind(practiceId, practiceName, doctors, bonusForDoctors(doctors)),
+    c.env.DB.prepare("INSERT INTO practices (id,name,doctor_count,bonus_cents,specialty) VALUES (?,?,?,?,?)").bind(practiceId, practiceName, doctors, bonusForDoctors(doctors), specialty),
     c.env.DB.prepare("INSERT INTO users (id,practice_id,email,name,password_hash,password_salt) VALUES (?,?,?,?,?,?)").bind(userId, practiceId, email, name, hash, salt),
   ]);
   await startSession(c, userId);
@@ -159,6 +160,7 @@ app.get("/api/summary", async (c: C) => {
     by_status: by.results,
     total_denied_cents: by.results.reduce((s, r) => s + r.cents, 0),
     recovered_cents: by.results.filter((r) => r.status === "paid").reduce((s, r) => s + r.cents, 0),
+    specialty: p.specialty, specialty_label: SPECIALTY_LABELS[p.specialty] ?? "General / Other",
     bonus_cents: p.bonus_cents, bonus_deadline: BONUS_DEADLINE,
     steps: [
       { key: "account", label: "Create your account", done: true, href: null },
@@ -196,7 +198,7 @@ app.patch("/api/claims/:id", async (c: C) => {
 });
 app.get("/api/claims/:id/appeal", async (c: C) => {
   const cl = await c.env.DB.prepare("SELECT * FROM claims WHERE id=? AND practice_id=?").bind(c.req.param("id"), c.get("practice").id).first<any>();
-  return cl ? c.json({ letter: draftAppeal(cl, c.get("practice").name) }) : c.json({ error: "not found" }, 404);
+  return cl ? c.json({ letter: draftAppeal(cl, c.get("practice").name, c.get("practice").specialty) }) : c.json({ error: "not found" }, 404);
 });
 
 // ---------- uploads ----------
@@ -262,14 +264,14 @@ app.all("/mcp", async (c: C) => {
   if (c.req.method !== "POST") return c.json({ error: "method not allowed" }, 405);
   const auth = c.req.header("authorization") ?? "";
   const tok = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const row = tok ? await c.env.DB.prepare("SELECT t.id, p.id pid, p.name pname FROM api_tokens t JOIN practices p ON p.id=t.practice_id WHERE t.token_hash=?").bind(await sha256Hex(tok)).first<any>() : null;
+  const row = tok ? await c.env.DB.prepare("SELECT t.id, p.id pid, p.name pname, p.specialty FROM api_tokens t JOIN practices p ON p.id=t.practice_id WHERE t.token_hash=?").bind(await sha256Hex(tok)).first<any>() : null;
   if (!row) return c.json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Unauthorized: send 'Authorization: Bearer <token>'" } }, 401);
   const signed = await c.env.DB.prepare("SELECT 1 x FROM hipaa_forms WHERE practice_id=? AND form_version=?").bind(row.pid, FORM_VERSION).first();
   if (!signed) return c.json({ jsonrpc: "2.0", id: null, error: { code: -32002, message: "HIPAA release form not signed" } }, 403);
   c.executionCtx.waitUntil(c.env.DB.prepare("UPDATE api_tokens SET last_used_at=datetime('now') WHERE id=?").bind(row.id).run());
   const body = await c.req.json<any>().catch(() => null);
   if (!body) return c.json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, 400);
-  const out = await handleMcp(c.env, row.pid, row.pname, body);
+  const out = await handleMcp(c.env, row.pid, row.pname, body, row.specialty ?? "other");
   return out === null || (Array.isArray(out) && !out.length) ? new Response(null, { status: 202 }) : c.json(out);
 });
 
