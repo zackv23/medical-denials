@@ -14,6 +14,9 @@ One Worker serves the static site (`public/`), the JSON API, and a remote MCP se
 | `/integrations.html` | **EZ Quick Connect** (7-day link + ingest credentials) and **MCP tokens** |
 | `/connect/<token>` | Public, token-gated page where the practice's EHR/billing admin submits integration credentials (AES-GCM encrypted) |
 
+## Billing & bonus
+Fees = 3% of denied pre-auth claims (CARC 15/197/198) + ⅓ of all other denied claims. The sign-up bonus matches fees dollar for dollar as billing credit, capped at the tier ($1,000 / $2,500 / $5,000). Computed in `feesAndCredit()` (`src/lib.ts`); shown on the dashboard. Currently based on denied amounts, not recovered amounts.
+
 ## MCP
 `POST /mcp` (Streamable HTTP, JSON-RPC, `Authorization: Bearer dop_…`). Tools: `get_summary`, `list_claims`, `get_claim`, `update_claim_status`, `add_denial`, `parse_835`, `draft_appeal`, `list_connections`.
 ```bash

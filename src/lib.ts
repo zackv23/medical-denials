@@ -87,3 +87,15 @@ TEMPLATE — must be reviewed by your healthcare attorney before production use.
 10. Release. The Covered Entity releases the Business Associate to contact payers, clearinghouses and billing vendors on its behalf, and to receive claim and remittance data from the practice management, EHR/EMR and billing systems it connects.
 
 By signing, the signer confirms they are authorized to bind the Covered Entity to this agreement.`;
+
+// Pre-authorization denials: CARC 15 (auth missing/invalid), 197 (absent), 198 (exceeded).
+export const PREAUTH_CARCS = ["15", "197", "198"];
+export const PREAUTH_RATE = 0.03;      // 3% of denied pre-auth claims
+export const OTHER_RATE = 1 / 3;       // 1/3 of all other denied claims
+
+/** Fees and the dollar-for-dollar billing-credit match (credit = fees, capped at the sign-up bonus). */
+export function feesAndCredit(preauthCents: number, otherCents: number, bonusCap: number) {
+  const fee = Math.round(preauthCents * PREAUTH_RATE + otherCents * OTHER_RATE);
+  const credit = Math.min(fee, bonusCap);
+  return { fee_cents: fee, credit_applied_cents: credit, credit_remaining_cents: bonusCap - credit, amount_due_cents: fee - credit };
+}

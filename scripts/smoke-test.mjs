@@ -29,6 +29,7 @@ const id = r.j.claims[0].id;
 r = await call("/api/claims/" + id, { method: "PATCH", body: { status: "appealed" } }); ok("update status", r.status === 200);
 r = await call(`/api/claims/${id}/appeal`); ok("appeal draft", /CLAIM RECONSIDERATION/.test(r.j.letter ?? ""));
 r = await call("/api/summary"); ok("summary + steps", r.j.total_denied_cents === 77000 && r.j.steps.find((s) => s.key === "upload").done, r.j);
+ok("billing: 3% preauth(320) + 1/3 other(450) = $160.60, fully covered by credit", r.j.billing.fee_cents === Math.round(32000*0.03+45000/3) && r.j.billing.amount_due_cents === 0, r.j.billing);
 r = await call("/api/connections", { method: "POST", body: { system_name: "Epic", category: "EHR" } }); ok("quick-connect link", r.status === 200 && r.j.connect_url && r.j.ingest_key, r);
 const link = r.j.connect_url.replace(/^https?:\/\/[^/]+/, ""), key = r.j.ingest_key;
 const saved = cookie; cookie = "";

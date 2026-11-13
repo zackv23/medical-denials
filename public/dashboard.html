@@ -6,6 +6,7 @@
 <div class="bonus" id="bonus"></div>
 <div class="grid" style="margin-bottom:20px"><div class="card"><h3>Onboarding checklist</h3><ol class="steps" id="steps"></ol></div>
 <div><div class="kpis" id="kpis"></div></div></div>
+<div class="card" id="billing" style="margin-bottom:20px"></div>
 <div class="card"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Claims</h3>
 <label style="display:flex;gap:8px;align-items:center">Status <select id="flt" style="width:auto"><option value="">All</option></select></label></div>
 <div class="tbl"><table><thead><tr><th>Claim</th><th>Payer ICN</th><th>CARC</th><th>Category</th><th>Denied</th><th>Status</th><th>Next step</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
@@ -18,8 +19,10 @@ const ST=["new","in_review","appealed","resubmitted","paid","written_off"];
  h.textContent=u.practice.name+" — onboarding & claims";
  flt.innerHTML+=ST.map(s=>`<option>${s}</option>`).join("");
  async function load(){const s=await api("/api/summary");
-  bonus.textContent=`🎉 Year-end sign-up bonus reserved for your practice: ${money(s.bonus_cents)} (${u.practice.doctor_count} doctor${u.practice.doctor_count>1?"s":""}). Offer ends ${s.bonus_deadline}.`;
+  bonus.textContent=`🎉 Year-end sign-up bonus: up to ${money(s.bonus_cents)} in billing credit, matched dollar for dollar (${u.practice.doctor_count} doctor${u.practice.doctor_count>1?"s":""}). Offer ends ${s.bonus_deadline}.`;
   steps.innerHTML=s.steps.map(x=>`<li class="${x.done?"done":""}"><span class="dot">${x.done?"✓":""}</span>${x.href&&!x.done?`<a href="${esc(x.href)}">${esc(x.label)}</a>`:esc(x.label)}</li>`).join("");
+  const b=s.billing;billing.innerHTML=`<h3>Billing &amp; bonus credit</h3><p style="margin:0 0 8px;color:var(--muted)">Fees: 3% of denied pre-auth claims + ⅓ of all other denied claims. Your bonus matches fees dollar for dollar as billing credit.</p>
+  <div class="row" style="gap:24px"><div><b>${money(b.fee_cents)}</b><br><small>Fees</small></div><div><b>${money(b.credit_applied_cents)}</b><br><small>Bonus credit applied</small></div><div><b>${money(b.credit_remaining_cents)}</b><br><small>Credit remaining</small></div><div><b>${money(b.amount_due_cents)}</b><br><small>Amount due</small></div></div>`;
   const n=s.by_status.reduce((a,r)=>a+r.n,0);
   kpis.innerHTML=[["Claims denied",n],["Dollars at risk",money(s.total_denied_cents)],["Recovered",money(s.recovered_cents)]].map(([l,v])=>`<div class="card kpi"><div class="n">${v}</div><div class="l">${l}</div></div>`).join("");
   const c=await api("/api/claims"+(flt.value?"?status="+flt.value:""));

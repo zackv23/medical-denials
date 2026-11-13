@@ -2,7 +2,7 @@ import { Hono, type Context } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import {
   type Env, BONUS_DEADLINE, CLAIM_STATUSES, FORM_VERSION, HIPAA_FORM_TEXT, bonusForDoctors,
-  decryptJson, encryptJson, hashPassword, randomHex, safeEqual, sha256Hex, uid,
+  PREAUTH_CARCS, decryptJson, encryptJson, feesAndCredit, hashPassword, randomHex, safeEqual, sha256Hex, uid,
 } from "./lib";
 import { carcInfo, draftAppeal, looksLike835, parse835, parseCsv, type Denial } from "./eras";
 import { importDenials } from "./claims";
@@ -153,7 +153,9 @@ app.get("/api/summary", async (c: C) => {
   const files = await c.env.DB.prepare("SELECT COUNT(*) n FROM files WHERE practice_id=?").bind(p.id).first<any>();
   const toks = await c.env.DB.prepare("SELECT COUNT(*) n FROM api_tokens WHERE practice_id=?").bind(p.id).first<any>();
   const signed = await hipaaSigned(c);
+  const split = await c.env.DB.prepare(`SELECT COALESCE(SUM(CASE WHEN carc IN (${PREAUTH_CARCS.map(() => "?").join(",")}) THEN denied_cents END),0) pre, COALESCE(SUM(CASE WHEN carc NOT IN (${PREAUTH_CARCS.map(() => "?").join(",")}) THEN denied_cents END),0) other FROM claims WHERE practice_id=?`).bind(...PREAUTH_CARCS, ...PREAUTH_CARCS, p.id).first<any>();
   return c.json({
+    billing: { preauth_denied_cents: split!.pre, other_denied_cents: split!.other, ...feesAndCredit(split!.pre, split!.other, p.bonus_cents) },
     by_status: by.results,
     total_denied_cents: by.results.reduce((s, r) => s + r.cents, 0),
     recovered_cents: by.results.filter((r) => r.status === "paid").reduce((s, r) => s + r.cents, 0),
