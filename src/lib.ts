@@ -62,6 +62,15 @@ export function bonusForDoctors(n: number) {
 export const CLAIM_STATUSES = ["new", "in_review", "appealed", "resubmitted", "paid", "written_off"] as const;
 export type ClaimStatus = (typeof CLAIM_STATUSES)[number];
 
+export const SPECIALTIES = ["primary_care", "pediatrics", "acute_care", "other"] as const;
+export type Specialty = (typeof SPECIALTIES)[number];
+export const SPECIALTY_LABELS: Record<string, string> = {
+  primary_care: "Primary Care",
+  pediatrics: "Pediatrics",
+  acute_care: "Acute Care (Hospital)",
+  other: "General / Other",
+};
+
 export const HIPAA_FORM_TEXT = `HIPAA AUTHORIZATION & BUSINESS ASSOCIATE AGREEMENT (BAA) ACKNOWLEDGMENT
 
 TEMPLATE — must be reviewed by your healthcare attorney before production use.

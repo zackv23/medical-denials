@@ -1,6 +1,6 @@
 import type { Env } from "./lib";
 import { CLAIM_STATUSES, uid } from "./lib";
-import { carcInfo, draftAppeal, parse835 } from "./eras";
+import { carcInfo, draftAppeal, SPECIALTY_DENIAL_PATTERNS, parse835 } from "./eras";
 import { importDenials } from "./claims";
 
 const TOOLS = [
@@ -23,12 +23,13 @@ async function findClaim(env: Env, practiceId: string, id: string) {
   return env.DB.prepare("SELECT * FROM claims WHERE practice_id=? AND (id=? OR claim_id=?) ORDER BY created_at LIMIT 1").bind(practiceId, id, id).first<any>();
 }
 
-async function callTool(env: Env, practiceId: string, practiceName: string, name: string, a: any) {
+async function callTool(env: Env, practiceId: string, practiceName: string, name: string, a: any, specialty?: string) {
   const db = env.DB;
   switch (name) {
     case "get_summary": {
       const rows = await db.prepare("SELECT status, COUNT(*) n, SUM(denied_cents) cents FROM claims WHERE practice_id=? GROUP BY status").bind(practiceId).all();
-      return text(rows.results);
+      const patterns = SPECIALTY_DENIAL_PATTERNS[specialty ?? "other"] ?? [];
+      return text({ by_status: rows.results, specialty: specialty ?? "other", common_denial_patterns: patterns });
     }
     case "list_claims": {
       const lim = Math.min(Number(a.limit) || 50, 200);
@@ -59,7 +60,7 @@ async function callTool(env: Env, practiceId: string, practiceName: string, name
     }
     case "draft_appeal": {
       const c = await findClaim(env, practiceId, String(a.id));
-      return c ? text(draftAppeal(c, practiceName)) : { ...text("Claim not found"), isError: true };
+      return c ? text(draftAppeal(c, practiceName, specialty)) : { ...text("Claim not found"), isError: true };
     }
     case "list_connections": {
       const r = await db.prepare("SELECT id, system_name, category, status, created_at FROM connections WHERE practice_id=?").bind(practiceId).all();
@@ -69,7 +70,7 @@ async function callTool(env: Env, practiceId: string, practiceName: string, name
   return { ...text("Unknown tool"), isError: true };
 }
 
-export async function handleMcp(env: Env, practiceId: string, practiceName: string, body: Rpc | Rpc[]) {
+export async function handleMcp(env: Env, practiceId: string, practiceName: string, body: Rpc | Rpc[], specialty?: string) {
   const one = async (m: Rpc) => {
     if (m.id === undefined) return null; // notification
     try {
@@ -79,7 +80,7 @@ export async function handleMcp(env: Env, practiceId: string, practiceName: stri
             instructions: "Tools for managing a medical practice's denied claims. Contains PHI: use only within HIPAA-compliant workflows." });
         case "ping": return ok(m.id, {});
         case "tools/list": return ok(m.id, { tools: TOOLS });
-        case "tools/call": return ok(m.id, await callTool(env, practiceId, practiceName, m.params?.name, m.params?.arguments ?? {}));
+        case "tools/call": return ok(m.id, await callTool(env, practiceId, practiceName, m.params?.name, m.params?.arguments ?? {}, specialty));
         default: return err(m.id, -32601, "Method not found");
       }
     } catch (e: any) {
