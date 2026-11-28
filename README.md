@@ -56,3 +56,14 @@ One-time setup:
 1. Create the D1 database and R2 bucket (see Deploy) and put the real `database_id` in `wrangler.jsonc`.
 2. `npx wrangler secret put ENCRYPTION_KEY`
 3. In GitHub → Settings → Secrets and variables → Actions, add `CLOUDFLARE_API_TOKEN` (template "Edit Cloudflare Workers" + D1 Edit + R2 Edit) and `CLOUDFLARE_ACCOUNT_ID`.
+
+## Pre-submission check (first check, 2026-11-27)
+Catches the gap between the visit note and the claim before it goes out. Rules-based; every flag quotes the note text it relies on. Suggestions only: a certified coder or the clinician confirms each change.
+- **Visit level:** E/M level from medical decision making (problems, data, risk; 2 of 3) or total time, whichever is higher, vs the billed 99202-99215. Flags under- and over-coding.
+- **Missed add-ons:** documented but not billed: rapid strep/flu/COVID/mono, urinalysis, glucose, EKG, IM injections + J-codes (ketorolac, ceftriaxone, dexamethasone), nebulizer, ankle/wrist/chest x-ray, splints, simple laceration repair, I&D.
+- **Modifier 25:** E/M billed with a same-day procedure but without -25.
+- Negation-aware: "rapid strep not performed, patient declined" and "no fever" are not counted.
+
+`POST /api/precheck` (logged in, HIPAA release signed) with `{ "visits": [{ "visit_id", "patient_type": "new"|"established", "billed": ["99213"], "note": "...", "minutes"?: 32 }] }`. Nothing is stored.
+
+Try it on made-up visits: `npm run test:precheck` (samples in `samples/precheck-visits-2026-11-27.json`).

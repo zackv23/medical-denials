@@ -1,0 +1,19 @@
+{
+  "_note": "Made-up visits for testing the pre-check. No real patients, providers or practices.",
+  "visits": [
+    { "visit_id": "SAMPLE-UC-001", "setting": "urgent_care", "patient_type": "established", "billed": ["99213"],
+      "note": "CC: sore throat x2 days. Fever to 101.8 at home, chills. Exam: tonsillar exudate, tender anterior nodes. Rapid strep positive. Assessment: strep pharyngitis. Plan: amoxicillin 500 mg BID x 10 days prescribed. Tylenol for fever." },
+    { "visit_id": "SAMPLE-UC-002", "setting": "urgent_care", "patient_type": "established", "billed": ["99214", "87804", "87804"],
+      "note": "CC: cough, body aches, fever 102. Rapid flu swab positive for influenza A. Assessment: influenza A. Plan: Tamiflu 75 mg BID x 5 days, fluids, rest." },
+    { "visit_id": "SAMPLE-UC-003", "setting": "urgent_care", "patient_type": "new", "billed": ["99203", "73610"],
+      "note": "CC: rolled left ankle playing basketball. Ankle x-ray 3 views obtained. My read: no fracture, no dislocation. Assessment: left ankle sprain. Plan: posterior short leg splint applied, crutches, ibuprofen 600 mg, RICE." },
+    { "visit_id": "SAMPLE-UC-004", "setting": "urgent_care", "patient_type": "established", "billed": ["99213"], "minutes": 32,
+      "note": "CC: wheezing x1 day. History of asthma. Assessment: asthma exacerbation, moderate. DuoNeb nebulizer treatment given in clinic with improvement. Prednisone 40 mg daily x 5 days prescribed. Total time 32 minutes." },
+    { "visit_id": "SAMPLE-UC-005", "setting": "urgent_care", "patient_type": "established", "billed": ["99214"],
+      "note": "CC: runny nose and congestion x3 days. No fever. Lungs clear. Assessment: viral URI. Plan: supportive care, saline spray, OTC decongestant." },
+    { "visit_id": "SAMPLE-PC-006", "setting": "primary_care", "patient_type": "established", "billed": ["99213", "81002"],
+      "note": "4 year old with fever 103 and painful urination. History obtained from mother. Urine dipstick positive for leukocytes and nitrites. Assessment: febrile UTI. Rocephin 50 mg/kg IM given in clinic. Cefdinir 14 mg/kg daily x 10 days prescribed." },
+    { "visit_id": "SAMPLE-UC-007", "setting": "urgent_care", "patient_type": "established", "billed": ["99213"],
+      "note": "CC: sore throat x1 day. No fever. Rapid strep not performed, patient declined. Assessment: viral pharyngitis. Plan: salt water gargles, ibuprofen as needed." }
+  ]
+}
