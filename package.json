@@ -9,7 +9,8 @@
     "db:migrate:local": "wrangler d1 migrations apply denialops --local",
     "db:migrate:remote": "wrangler d1 migrations apply denialops --remote",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/smoke-test.mjs"
+    "test": "node scripts/smoke-test.mjs",
+    "test:precheck": "node --experimental-strip-types scripts/precheck-samples-2026-11-27.mjs"
   },
   "dependencies": { "hono": "^4.6.0" },
   "devDependencies": {

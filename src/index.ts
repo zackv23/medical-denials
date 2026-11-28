@@ -7,6 +7,7 @@ import {
 import { carcInfo, draftAppeal, looksLike835, parse835, parseCsv, type Denial } from "./eras";
 import { importDenials } from "./claims";
 import { handleMcp } from "./mcp";
+import { precheckBatch, type Visit } from "./precheck";
 
 type Vars = { user: { id: string; email: string; name: string; practice_id: string }; practice: { id: string; name: string; doctor_count: number; bonus_cents: number } };
 type C = Context<{ Bindings: Env; Variables: Vars }>;
@@ -103,6 +104,7 @@ app.use("/api/summary", requireAuth); app.use("/api/claims/*", requireAuth); app
 app.use("/api/uploads", requireAuth); app.use("/api/files/*", requireAuth); app.use("/api/files", requireAuth);
 app.use("/api/tokens/*", requireAuth); app.use("/api/tokens", requireAuth);
 app.use("/api/connections/*", requireAuth); app.use("/api/connections", requireAuth);
+app.use("/api/precheck", requireAuth);
 
 app.get("/api/me", async (c: C) => c.json({ user: c.get("user"), practice: c.get("practice"), hipaa_signed: await hipaaSigned(c), bonus_deadline: BONUS_DEADLINE }));
 
@@ -347,6 +349,21 @@ app.post("/api/ingest", async (c: C) => {
   const n = await importDenials(c.env, conn.practice_id, denials, "ingest", null);
   await c.env.DB.prepare("UPDATE connections SET status='connected', updated_at=datetime('now') WHERE id=?").bind(conn.id).run();
   return c.json({ ok: true, claims_imported: n });
+});
+
+// ---------- pre-submission check (visit level vs note, missed add-ons, modifier 25) ----------
+// Visit notes are PHI, so the HIPAA release must be signed first. Nothing is stored; suggestions only.
+app.post("/api/precheck", async (c: C) => {
+  if (!(await hipaaSigned(c))) return c.json({ error: "sign the HIPAA release first" }, 409);
+  const body = await c.req.json().catch(() => null);
+  const visits: Visit[] = Array.isArray(body) ? body : body?.visits;
+  if (!Array.isArray(visits) || !visits.length) return c.json({ error: "send { visits: [...] }" }, 400);
+  if (visits.length > 500) return c.json({ error: "max 500 visits per request" }, 400);
+  const bad = visits.find((v) => !v || typeof v.visit_id !== "string" || typeof v.note !== "string" || !Array.isArray(v.billed) || !["new", "established"].includes(v.patient_type));
+  if (bad) return c.json({ error: "each visit needs visit_id, patient_type (new|established), billed [codes] and note" }, 400);
+  const out = precheckBatch(visits);
+  await audit(c, c.get("practice").id, c.get("user").id, "precheck", `${out.visits} visits, ${out.visits_flagged} flagged`);
+  return c.json(out);
 });
 
 app.notFound((c) => (c.req.path.startsWith("/api/") ? c.json({ error: "not found" }, 404) : c.env.ASSETS.fetch(c.req.raw)));
